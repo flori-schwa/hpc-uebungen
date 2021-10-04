@@ -111,6 +111,8 @@ int main()
             exit(err);
         }
     }
+
+    free(thread_args);
 #endif
 
     gettimeofday(&end, 0);
@@ -125,4 +127,7 @@ int main()
     printf("%8.2f MFLOP/s\n", mflops);
 
     stbi_write_jpg("grayscale.jpg", width, height, 1, gray, 95);
+
+    free(img);
+    free(gray);
 }
