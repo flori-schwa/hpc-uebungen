@@ -1,14 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <windows.h>
 #include <unistd.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
+#define IMAGE_PENCILS "tamanna-rumee-vaTsR-ghLog-unsplash.jpg"
+#define IMAGE_CITY_LARGE "Large-Sample-Image-download-for-Testing"
+
+#define TEST_IMAGE IMAGE_PENCILS
 
 struct grayscale_args {
     unsigned char* src;
@@ -41,7 +46,7 @@ int main()
     // Read color JPG into byte array "img"
     // Array contains "width" x "height" pixels each consisting of "channels" colors/bytes
     int width, height, channels;
-    unsigned char *img = stbi_load("tamanna-rumee-vaTsR-ghLog-unsplash.jpg", &width, &height, &channels, 3);
+    unsigned char *img = stbi_load(TEST_IMAGE, &width, &height, &channels, 3);
     if (img == NULL)
     {
         printf("Err: loading image\n");
@@ -53,12 +58,10 @@ int main()
     // Allocate target array for grayscale image
     unsigned char *gray = malloc(width * height);
 
-    // TODO Zeitmessen Start
-
     struct timeval start;
-    gettimeofday(&start, 0);
+    struct timeval end;
 
-    // TODO Konvertierung
+    gettimeofday(&start, 0);
 
 #define MULTI
 
@@ -72,20 +75,22 @@ int main()
 
     grayscale_calc(&args);
 #elif defined(MULTI)
-    #define N_THREADS 8
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    int amountProcessors = (int) sysinfo.dwNumberOfProcessors;
 
-    struct grayscale_args thread_args[N_THREADS];
-    pthread_t threads[N_THREADS];
+    struct grayscale_args* thread_args = malloc(sizeof(struct grayscale_args) * amountProcessors);
+    pthread_t threads[amountProcessors];
 
-    int threadPixels = (width * height) / N_THREADS;
+    int threadPixels = (width * height) / amountProcessors;
 
-    for (int i = 0; i < N_THREADS; i++) {
+    for (int i = 0; i < amountProcessors; i++) {
         thread_args[i].src = img + (i * threadPixels * channels);
         thread_args[i].channels = channels;
         thread_args[i].target = gray + (i * threadPixels);
 
-        if (i == (N_THREADS - 1)) {
-            thread_args[i].pixels = (width * height) - ((N_THREADS - 1) * threadPixels);
+        if (i == (amountProcessors - 1)) {
+            thread_args[i].pixels = (width * height) - ((amountProcessors - 1) * threadPixels);
         } else {
             thread_args[i].pixels = threadPixels;
         }
@@ -98,7 +103,7 @@ int main()
         }
     }
 
-    for (int i = 0; i < N_THREADS; i++) {
+    for (int i = 0; i < amountProcessors; i++) {
         int err = pthread_join(threads[i], NULL);
 
         if (err) {
@@ -108,22 +113,15 @@ int main()
     }
 #endif
 
-    // TODO Zeitmessen Ende
-
-    struct timeval end;
     gettimeofday(&end, 0);
     long lsec = end.tv_sec - start.tv_sec;
     long lusec = end.tv_usec - start.tv_usec;
     double sec = (lsec + lusec / 1000000.0);
-    printf("%8.6f seconds\n", sec);
-
-    // TODO FLOP Berechnung
 
     long flop = width * height * (3 + 2);
-
-    //TODO Ausgabe FLOP/s
-
     double mflops = flop / 1000000.0 / sec;
+
+    printf("%8.6f seconds\n", sec);
     printf("%8.2f MFLOP/s\n", mflops);
 
     stbi_write_jpg("grayscale.jpg", width, height, 1, gray, 95);
