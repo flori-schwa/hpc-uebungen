@@ -49,10 +49,13 @@ int main()
     float *b1d = b[0];
     
     // Ohne SIMD: 1 Float Point pro Schritt
-    for(int i=0;i<size;i+=1) {
-        *a1d = *a1d + *b1d;
-        a1d += 1;
-        b1d += 1;
+    for (int i = 0; i < size; i += 4) {
+        __m128 ma = _mm_load_ps(a1d + i);
+        __m128 mb = _mm_load_ps(b1d + i);
+
+        __m128 result = _mm_add_ps(ma, mb);
+
+        _mm_store_ps(a1d + i, result);
     }
 
     gettimeofday(&end, 0);
