@@ -5,11 +5,13 @@
 #define X 8192
 #define Y 8192
 
-void** malloc2d(int x, int y, size_t size) {
-    void** array = malloc(x * sizeof(void*) + x * y * size);
-    for (int i = 0; i < x; i++) {
-        int offset = x * sizeof(void*) + i * y * size;
-        array[i] = (void*) ((unsigned char*) array + offset);
+void **malloc2d(int x, int y, size_t size)
+{
+    void **array = malloc(x * sizeof(void *) + x * y * size);
+    for (int i = 0; i < x; i++)
+    {
+        size_t offset = x * sizeof(void *) + i * y * size;
+        array[i] = (void *)((unsigned char *)array + offset);
     }
     return array;
 }
