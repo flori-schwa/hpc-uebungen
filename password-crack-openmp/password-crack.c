@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include "sha-256.h"
+#include <omp.h>
+#include <sys/time.h>
 
 static void hash_to_string(char string[65], const uint8_t hash[32])
 {
@@ -10,14 +12,35 @@ static void hash_to_string(char string[65], const uint8_t hash[32])
     }
 }
 
-static void crack(char hash_hex_str[65])
+static void crack(const char hash_hex_str[65])
 {
-    // TODO
-	// Generate all password and generate hex strings, then compare like this:
-	//     if(!strncmp(hash_hex_str, test_hash_str, 64)) {
-    //         printf("Password: %s\n", test_password);
-    //     }
-    //
+    struct timeval start;
+    struct timeval end;
+
+    gettimeofday(&start, 0);
+
+#pragma omp parallel for default(none) shared(hash_hex_str)
+    for (int i = 0; i < 100000000; i++) {
+        char password[9] = { 0 };
+        snprintf(password, 9, "%08d", i);
+
+        uint8_t hash[32];
+        calc_sha_256(hash, password, 8);
+        char hash_string[65];
+        hash_to_string(hash_string, hash);
+
+        if (!strncmp(hash_hex_str, hash_string, 64)) {
+            printf("Password: %s\n", password);
+        }
+    }
+
+    gettimeofday(&end, 0);
+
+    long lsec = end.tv_sec - start.tv_sec;
+    long lusec = end.tv_usec - start.tv_usec;
+    double sec = (lsec + lusec / 1000000.0);
+
+    printf("%f seconds\n", sec);
 }
 
 int main(int argc, char **argv)
